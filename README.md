@@ -1,7 +1,7 @@
-# Proyecto Integrador – Organización y Arquitectura de Computadores
+# Proyecto Integrador – Organización de Computadores
 
 ## Equipo
-**Gentleman**
+**Gentlemans**
 
 ## Estudiantes
 - Nombre: Cristóbal Machado Sánchez
@@ -10,7 +10,7 @@
 
 ## Descripción
 
-Este repositorio contiene la solución al Proyecto 1 del curso de Organización y Arquitectura de Computadores, correspondiente a la implementación de compuertas lógicas básicas y estructuras combinacionales derivadas, utilizando el Hardware Description Language (HDL) de la plataforma Nand2Tetris.
+Este repositorio contiene la solución al Proyecto 1 del curso de Organización de Computadores, correspondiente a la implementación de compuertas lógicas básicas y estructuras combinacionales derivadas, utilizando el Hardware Description Language (HDL) de la plataforma Nand2Tetris.
 
 ---
 
