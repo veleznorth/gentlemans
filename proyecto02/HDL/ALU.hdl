@@ -1,0 +1,38 @@
+// Nand2Tetris ALU.
+// Keeps the official interface and behavior.
+CHIP ALU {
+    IN x[16], y[16], zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+
+    PARTS:
+    // Preparation of x.
+    Mux16(a=x, b=false, sel=zx, out=xZeroed);
+    Not16(in=xZeroed, out=xNegated);
+    Mux16(a=xZeroed, b=xNegated, sel=nx, out=xPrepared);
+
+    // Preparation of y.
+    Mux16(a=y, b=false, sel=zy, out=yZeroed);
+    Not16(in=yZeroed, out=yNegated);
+    Mux16(a=yZeroed, b=yNegated, sel=ny, out=yPrepared);
+
+    // f=0 => bitwise AND, f=1 => addition.
+    And16(a=xPrepared, b=yPrepared, out=andResult);
+    Add16(a=xPrepared, b=yPrepared, out=addResult);
+    Mux16(a=andResult, b=addResult, sel=f, out=functionResult);
+
+    // no=1 negates the result.
+    // The halves are split here because a sub-bus of an internal node
+    // cannot be referenced later in the HDL.
+    Not16(in=functionResult, out=negatedResult);
+    Mux16(a=functionResult, b=negatedResult, sel=no,
+          out=out,
+          out[0..7]=lowHalf,
+          out[8..15]=highHalf,
+          out[15]=ng);
+
+    // Flags are computed over the final output.
+    Or8Way(in=lowHalf, out=lowAny);
+    Or8Way(in=highHalf, out=highAny);
+    Or(a=lowAny, b=highAny, out=anyBit);
+    Not(in=anyBit, out=zr);
+}
