@@ -1,0 +1,116 @@
+// Extended ALU for the course project.
+//
+// a=0: behaves exactly like the original Nand2Tetris ALU.
+// a=1: if the six control bits zx,nx,zy,ny,f,no match one of the extended
+// opcodes, the corresponding new operation is selected. Any unrecognized
+// combination falls back to the original ALU, so no previous behavior breaks.
+//
+// Opcodes (zx nx zy ny f no):
+// XOR  = 010110
+// NAND = 000001
+// NOR  = 110100
+// EQ   = 101000
+// ABS  = 100010
+CHIP ALUExtendida {
+    IN x[16], y[16], a, zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+
+    PARTS:
+    // Original ALU: guarantees compatibility when a=0.
+    ALU(x=x, y=y, zx=zx, nx=nx, zy=zy, ny=ny, f=f, no=no, out=legacyOut);
+
+    // Candidate results.
+    // XOR bitwise = (x OR y) AND NOT(x AND y).
+    Or16(a=x, b=y, out=xOrY);
+    And16(a=x, b=y, out=xAndY);
+    Not16(in=xAndY, out=notXAndY);
+    And16(a=xOrY, b=notXAndY,
+          out=xorOut,
+          out[0..7]=xorLow,
+          out[8..15]=xorHigh);
+
+    // NAND and NOR.
+    Not16(in=xAndY, out=nandOut);
+    Not16(in=xOrY, out=norOut);
+
+    // EQ: 1 when x equals y, 0 otherwise.
+    Or8Way(in=xorLow, out=eqLowDiff);
+    Or8Way(in=xorHigh, out=eqHighDiff);
+    Or(a=eqLowDiff, b=eqHighDiff, out=eqAnyDiff);
+    Not(in=eqAnyDiff, out=eqBit);
+    Mux16(a=false, b[0]=true, sel=eqBit, out=eqOut);
+
+    // ABS in two's complement: negate x when the sign bit is set.
+    Not16(in=x, out=notX);
+    Add16(a=notX, b[0]=true, out=minusX);
+    Mux16(a=x, b=minusX, sel=x[15], out=absOut);
+
+    // Negated control bits, used to decode the five opcodes.
+    Not(in=zx, out=nzx);
+    Not(in=nx, out=nnx);
+    Not(in=zy, out=nzy);
+    Not(in=ny, out=nny);
+    Not(in=f, out=nf);
+    Not(in=no, out=nno);
+
+    // XOR = 010110
+    And(a=nzx, b=nx, out=xorM1);
+    And(a=xorM1, b=nzy, out=xorM2);
+    And(a=xorM2, b=ny, out=xorM3);
+    And(a=xorM3, b=f, out=xorM4);
+    And(a=xorM4, b=nno, out=isXor);
+
+    // NAND = 000001
+    And(a=nzx, b=nnx, out=nandM1);
+    And(a=nandM1, b=nzy, out=nandM2);
+    And(a=nandM2, b=nny, out=nandM3);
+    And(a=nandM3, b=nf, out=nandM4);
+    And(a=nandM4, b=no, out=isNand);
+
+    // NOR = 110100
+    And(a=zx, b=nx, out=norM1);
+    And(a=norM1, b=nzy, out=norM2);
+    And(a=norM2, b=ny, out=norM3);
+    And(a=norM3, b=nf, out=norM4);
+    And(a=norM4, b=nno, out=isNor);
+
+    // EQ = 101000
+    And(a=zx, b=nnx, out=eqM1);
+    And(a=eqM1, b=zy, out=eqM2);
+    And(a=eqM2, b=nny, out=eqM3);
+    And(a=eqM3, b=nf, out=eqM4);
+    And(a=eqM4, b=nno, out=isEq);
+
+    // ABS = 100010
+    And(a=zx, b=nnx, out=absM1);
+    And(a=absM1, b=nzy, out=absM2);
+    And(a=absM2, b=nny, out=absM3);
+    And(a=absM3, b=f, out=absM4);
+    And(a=absM4, b=nno, out=isAbs);
+
+    // Selection of the recognized extended operation.
+    Mux16(a=false, b=xorOut, sel=isXor, out=e1);
+    Mux16(a=e1, b=nandOut, sel=isNand, out=e2);
+    Mux16(a=e2, b=norOut, sel=isNor, out=e3);
+    Mux16(a=e3, b=eqOut, sel=isEq, out=e4);
+    Mux16(a=e4, b=absOut, sel=isAbs, out=extendedOut);
+
+    Or(a=isXor, b=isNand, out=match1);
+    Or(a=isNor, b=isEq, out=match2);
+    Or(a=match1, b=match2, out=match3);
+    Or(a=match3, b=isAbs, out=recognized);
+    And(a=a, b=recognized, out=useExtended);
+
+    // a=0 or an unrecognized opcode keeps the original ALU output.
+    Mux16(a=legacyOut, b=extendedOut, sel=useExtended,
+          out=out,
+          out[0..7]=finalLow,
+          out[8..15]=finalHigh,
+          out[15]=ng);
+
+    // Flags are ALWAYS computed over the finally selected output.
+    Or8Way(in=finalLow, out=flagLow);
+    Or8Way(in=finalHigh, out=flagHigh);
+    Or(a=flagLow, b=flagHigh, out=flagAny);
+    Not(in=flagAny, out=zr);
+}
